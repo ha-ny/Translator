@@ -89,70 +89,39 @@ class ViewController: UIViewController {
 extension ViewController: UITextViewDelegate{
     func textViewDidChange(_ textView: UITextView) {
         
+        guard let toText = (toTextView.text == "" ? nil : toTextView.text) else { return }
+        
         if detectSwitch.isOn{
-            languageDetectAPI()
+            languageDetectAPI(toText)
         }
 
-        translateAPI()
+        translateAPI(toText)
     }
 }
 
 //API
 extension ViewController{
 
-    func translateAPI(){
-
-        guard let toText = (toTextView.text == "" ? nil : toTextView.text) else { return }
-        
-        let url = "https://openapi.naver.com/v1/papago/n2mt"
+    func apiSetting(funcname: String, url: String, parameters: Parameters){
         
         let headers = HTTPHeaders([
             "X-Naver-Client-Id": APIKey.naverID,
             "X-Naver-Client-Secret": APIKey.naverSecret,
             ])
         
-        let parameters: Parameters = [
-            "source": toCode,
-            "target": fromCode,
-            "text": toTextView.text ?? "",
-        ]
-        
         AF.request(url, method: .post, parameters: parameters, headers: headers).validate().responseJSON { response in
             switch response.result{
             case .success(let value):
                 let json = JSON(value)
-                print("---------------------------------", #function, json)
-                self.fromTextView.text = json["message"]["result"]["translatedText"].stringValue
-            case .failure(let error):
-                print(#function, error)
-            }
-        }
-    }
-    
-    func languageDetectAPI(){
- 
-        guard let toText = (toTextView.text == "" ? nil : toTextView.text) else { return }
-        
-        let url = "https://openapi.naver.com/v1/papago/detectLangs"
-        
-        let headers = HTTPHeaders([
-            "X-Naver-Client-Id": APIKey.naverID,
-            "X-Naver-Client-Secret": APIKey.naverSecret,
-            ])
-        
-        let parameters: Parameters = [
-            "query": toText
-        ]
-        
-        AF.request(url, method: .post, parameters: parameters, headers: headers).validate().responseJSON { response in
-            switch response.result{
-            case .success(let value):
-                let json = JSON(value)
-                print("---------------------------------", #function, json)
-                for data in self.dataList{
-                    if json["langCode"].stringValue.contains(data.code){
-                        self.toLanguageTextField.text = data.name
-                        return
+                
+                if funcname == "translateAPI"{
+                    self.fromTextView.text = json["message"]["result"]["translatedText"].stringValue
+                }else{
+                    for data in self.dataList{
+                        if json["langCode"].stringValue == data.code{
+                            self.toLanguageTextField.text = data.name
+                            return
+                        }
                     }
                 }
                 
@@ -160,6 +129,27 @@ extension ViewController{
                 print(#function, error)
             }
         }
+        
+    }
+    
+    func translateAPI(_ toText: String){
+
+        let parameters: Parameters = [
+            "source": toCode,
+            "target": fromCode,
+            "text": toText
+        ]
+        
+        apiSetting(funcname: "translateAPI", url: "https://openapi.naver.com/v1/papago/n2mt", parameters: parameters)
+    }
+    
+    func languageDetectAPI(_ toText: String){
+                
+        let parameters: Parameters = [
+            "query": toText
+        ]
+        
+        apiSetting(funcname: "languageDetectAPI", url: "https://openapi.naver.com/v1/papago/detectLangs", parameters: parameters)
     }
 }
 
@@ -217,13 +207,15 @@ extension ViewController: UIPickerViewDelegate, UIPickerViewDataSource{
     
     func pickerView(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int, reusing view: UIView?) -> UIView {
         
-        let view = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: 60))
+        let height = 60
         
-        let nameLabel = UILabel(frame: CGRect(x: 0, y: 0, width: 100, height: 60))
+        let view = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: height))
+        
+        let nameLabel = UILabel(frame: CGRect(x: 0, y: 0, width: 100, height: height))
         nameLabel.text = dataList[row].name
         nameLabel.textAlignment = .center
         
-        let codeLabel = UILabel(frame: CGRect(x: 100, y: 0, width: 100, height: 60))
+        let codeLabel = UILabel(frame: CGRect(x: 100, y: 0, width: 100, height: height))
         codeLabel.text = dataList[row].code
         codeLabel.textAlignment = .center
 
